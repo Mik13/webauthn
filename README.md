@@ -162,6 +162,9 @@ not authenticated. Available options include:
 - `[failureRedirect]` - If the user fails to authenticate then they will be
 redirected to the supplied URL.
 
+**`WebAuthn.setLogger(func)`**
+Sets the logger which will be used. Must have the functions `log` and `error` as fields.
+
 ### Storage Adapater
 
 Storage adapters provide an interface to the WebAuthn RP to store and retrieve
