@@ -18,6 +18,7 @@ const { Certificate } = require('@fidm/x509')
 const MemoryAdapter = require('./MemoryAdapter')
 const AttestationChallengeBuilder = require('./AttestationChallengeBuilder')
 const AssertionChallengeBuilder = require('./AssertionChallengeBuilder')
+const Dictionaries = require('./Dictionaries')
 
 /**
  * Webauthn RP
@@ -35,6 +36,7 @@ class Webauthn {
       assertionEndpoint: '/login',
       challengeEndpoint: '/response',
       logoutEndpoint: '/logout',
+      attestationType: Dictionaries.AttestationConveyancePreference.DIRECT,
     }, options)
 
     // Map object for field names from req param to db name.
@@ -73,6 +75,7 @@ class Webauthn {
 
   register (options = {}) {
     const usernameField = this.config.usernameField || options.usernameField
+    const attestationType = this.config.attestationType || options.attestationType
 
     return async (req, res, next) => {
       if (!req.body) {
@@ -111,6 +114,7 @@ class Webauthn {
       const attestation = new AttestationChallengeBuilder(this)
         .setUserInfo(user)
         // .setAuthenticator() // Forces TPM
+        .setAttestationType(attestationType)
         .setRelyingPartyInfo({ name: this.config.rpName || options.rpName })
         .build({ status: 'ok' })
 
@@ -237,7 +241,10 @@ class Webauthn {
 
       try {
         if (response.attestationObject !== undefined) {
-          result = Webauthn.verifyAuthenticatorAttestationResponse(response)
+          result = Webauthn.verifyAuthenticatorAttestationResponse(
+              response,
+              this.config.attestationType !== Dictionaries.AttestationConveyancePreference.DIRECT
+          )
 
           if (result.verified) {
             user.authenticator = result.authrInfo
@@ -334,7 +341,7 @@ class Webauthn {
    * @ignore
    */
 
-  static verifyAuthenticatorAttestationResponse (webauthnResponse) {
+  static verifyAuthenticatorAttestationResponse (webauthnResponse, noneAttestationAllowed) {
     const attestationBuffer = base64url.toBuffer(webauthnResponse.attestationObject);
     const ctapMakeCredResp = cbor.decodeAllSync(attestationBuffer)[0];
 
@@ -366,6 +373,22 @@ class Webauthn {
           credID: base64url.encode(authrDataStruct.credID)
         }
       }
+
+      // "none" attestation if allowed
+    } else if (ctapMakeCredResp.fmt === 'none' && noneAttestationAllowed) {
+      if (!(authrDataStruct.flags & 0x01)) // U2F_USER_PRESENTED
+        throw new Error('User was NOT presented durring authentication!');
+
+      const publicKey = Webauthn.COSEECDHAtoPKCS(authrDataStruct.COSEPublicKey)
+
+      response.authrInfo = {
+        fmt: 'none',
+        publicKey: base64url.encode(publicKey),
+        counter: authrDataStruct.counter,
+        credID: base64url.encode(authrDataStruct.credID)
+      }
+
+      response.verified = true;
 
     } else if (ctapMakeCredResp.fmt === 'packed' && ctapMakeCredResp.attStmt.hasOwnProperty('x5c')) {
       if (!(authrDataStruct.flags & 0x01)) // U2F_USER_PRESENTED

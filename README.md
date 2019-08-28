@@ -147,6 +147,7 @@ endpoint.
 - `[challengeEndpoint = '/response']` - the path of the challenge response
 endpoint.
 - `[logoutEndpoint = '/logout']` - the path of the logout endpoint.
+- `[attestationType = 'direct']` - either direct, indirect or none
 
 **`webauthn.initialize()`**
 
