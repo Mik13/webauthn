@@ -185,6 +185,17 @@ class AttestationChallengeBuilder {
     return this
   }
 
+  setExcludeCredentials (excludeCredentials) {
+    if (excludeCredentials) {
+      this.result.excludeCredentials = excludeCredentials.map((credential) => ({
+        type: 'public-key',
+        id: credential.credID,
+      }));
+    }
+
+    return this
+  }
+
   build (override = {}) {
     const challenge = base64url(crypto.randomBytes(32))
     const { rp, user, attestation, pubKeyCredParams } = this.result

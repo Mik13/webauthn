@@ -68,6 +68,13 @@ class Client {
   static preformatMakeCredReq (makeCredReq) {
     makeCredReq.challenge = base64url.decode(makeCredReq.challenge)
     makeCredReq.user.id = base64url.decode(makeCredReq.user.id)
+
+    if (makeCredReq.excludeCredentials) {
+      for (const exclude of makeCredReq.excludeCredentials) {
+        exclude.id = base64url.decode(exclude.id)
+      }
+    }
+
     return makeCredReq
   }
 

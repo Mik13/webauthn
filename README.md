@@ -148,6 +148,7 @@ endpoint.
 endpoint.
 - `[logoutEndpoint = '/logout']` - the path of the logout endpoint.
 - `[attestationType = 'direct']` - either direct, indirect or none
+- `[maxAuthenticators = 1]` - allowed authenticators per user
 
 **`webauthn.initialize()`**
 

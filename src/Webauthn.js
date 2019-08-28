@@ -37,6 +37,7 @@ class Webauthn {
       challengeEndpoint: '/response',
       logoutEndpoint: '/logout',
       attestationType: Dictionaries.AttestationConveyancePreference.DIRECT,
+      maxAuthenticators: 1,
     }, options)
 
     // Map object for field names from req param to db name.
@@ -99,10 +100,16 @@ class Webauthn {
       })
 
       const existing = await this.store.get(username)
-      if (existing && existing.authenticator) {
+      let existingAuthenticators;
+
+      if (existing) {
+        existingAuthenticators = existing.authenticator ? [existing.authenticator] : existing.authenticators
+      }
+
+      if (existingAuthenticators && existingAuthenticators.length >= this.config.maxAuthenticators) {
         return res.status(403).json({
           'status': 'failed',
-          'message': `${usernameField} ${username} already exists`,
+          'message': `${usernameField} ${username} already has ${this.config.maxAuthenticators} device(s) registered`,
         })
       }
 
@@ -116,6 +123,7 @@ class Webauthn {
         // .setAuthenticator() // Forces TPM
         .setAttestationType(attestationType)
         .setRelyingPartyInfo({ name: this.config.rpName || options.rpName })
+        .setExcludeCredentials(existingAuthenticators)
         .build({ status: 'ok' })
 
       req.session.challenge = attestation.challenge
@@ -154,8 +162,12 @@ class Webauthn {
           })
         }
 
+        if (user.authenticator) {
+          user.authenticators = [user.authenticator];
+        }
+
         const assertion = new AssertionChallengeBuilder(this)
-          .addAllowedCredential({ id: user.authenticator.credID })
+          .addAllowedCredential(user.authenticators.map((authenticator) => ({ id: authenticator.credID })))
           .build({ status: 'ok' })
 
         req.session.challenge = assertion.challenge
@@ -247,18 +259,32 @@ class Webauthn {
           )
 
           if (result.verified) {
-            user.authenticator = result.authrInfo
+            if (!user.authenticators) {
+              user.authenticators = []
+
+              if (user.authenticator) {
+                user.authenticators.push(user.authenticator)
+
+                delete user.authenticator
+              }
+            }
+
+            user.authenticators.push(result.authrInfo)
             await this.store.put(username, user)
           }
 
         } else if (response.authenticatorData !== undefined) {
-          result = Webauthn.verifyAuthenticatorAssertionResponse(response, user.authenticator)
+          const authenticators = user.authenticator ? [user.authenticator] : user.authenticators
+          const results = authenticators.map((authenticator) => ( {authenticator, result: Webauthn.verifyAuthenticatorAssertionResponse(response, authenticator) }))
+          const verified = results.find(({result}) => result.verified)
+
+          result = (verified || results[0]).result
 
           if (result.verified) {
-            if (result.counter <= user.authenticator.counter)
+            if (result.counter <= verified.authenticator.counter)
               throw new Error('Authr counter did not increase!')
 
-            user.authenticator.counter = result.counter
+            verified.authenticator.counter = result.counter
             await this.store.put(username, user)
           }
 
