@@ -8,7 +8,7 @@
  * Module Dependencies
  * @ignore
  */
-import base64url from './base64url'
+import base64url from './base64url.js'
 
 /**
  * Client

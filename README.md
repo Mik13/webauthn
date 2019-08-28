@@ -99,6 +99,21 @@ await client.register({
 await client.login({ username: 'AL1C3' })
 ```
 
+Browser
+
+```html
+<script type="module">
+  import Client from '/js/webauthn/client/index.js'
+
+  const client = new Client();
+
+  client.register({
+    username: 'AL1C3',
+    name: 'Alice',
+  })
+</script>
+```
+
 ## API
 
 [cred-mgmt-api]: https://developer.mozilla.org/en-US/docs/Web/API/Credential_Management_API

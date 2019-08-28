@@ -4,7 +4,7 @@
  * Module Dependencies
  * @ignore
  */
-import Client from './Client'
+import Client from './Client.js'
 
 /**
  * Re-Exports
