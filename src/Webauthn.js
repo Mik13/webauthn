@@ -544,24 +544,22 @@ class Webauthn {
     const authenticatorData = base64url.toBuffer(webauthnResponse.authenticatorData)
 
     const response = { 'verified': false }
-    if (['fido-u2f'].includes(authr.fmt)) {
-      const authrDataStruct = Webauthn.parseGetAssertAuthData(authenticatorData)
-      Webauthn.logger.log('AUTH_DATA', authrDataStruct)
 
-      if (!(authrDataStruct.flags & 0x01)) {// U2F_USER_PRESENTED
-        throw new Error('User was not presented durring authentication!')
-      }
+    const authrDataStruct = Webauthn.parseGetAssertAuthData(authenticatorData)
+    Webauthn.logger.log('AUTH_DATA', authrDataStruct)
 
-      const clientDataHash = Webauthn.hash(base64url.toBuffer(webauthnResponse.clientDataJSON))
-      const signatureBase = Buffer.concat([authenticatorData, clientDataHash]);
-
-      const publicKey = Webauthn.ASN1toPEM(base64url.toBuffer(authr.publicKey))
-      const signature = base64url.toBuffer(webauthnResponse.signature)
-
-      response.counter = authrDataStruct.counter
-      response.verified = Webauthn.verifySignature(signature, signatureBase, publicKey)
-
+    if (!(authrDataStruct.flags & 0x01)) {// U2F_USER_PRESENTED
+      throw new Error('User was not presented durring authentication!')
     }
+
+    const clientDataHash = Webauthn.hash(base64url.toBuffer(webauthnResponse.clientDataJSON))
+    const signatureBase = Buffer.concat([authenticatorData, clientDataHash]);
+
+    const publicKey = Webauthn.ASN1toPEM(base64url.toBuffer(authr.publicKey))
+    const signature = base64url.toBuffer(webauthnResponse.signature)
+
+    response.counter = authrDataStruct.counter
+    response.verified = Webauthn.verifySignature(signature, signatureBase, publicKey)
 
     return response
   }
