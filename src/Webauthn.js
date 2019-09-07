@@ -104,6 +104,7 @@ class Webauthn {
 
       if (existing) {
         existingAuthenticators = existing.authenticator ? [existing.authenticator] : existing.authenticators
+        user.authenticators = existingAuthenticators
       }
 
       if (existingAuthenticators && existingAuthenticators.length >= this.config.maxAuthenticators) {
